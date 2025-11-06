@@ -1,5 +1,6 @@
 program demonstrate_aggregator
 
+  use iso_fortran_env, only: output_unit
   use aggregator_module, only: aggregator, aggregator_1d, aggregator_2d, new_aggregator
 
   implicit none
@@ -9,7 +10,6 @@ program demonstrate_aggregator
   real, dimension(:), allocatable, target :: var_1, var_2, var_3, tmp_1d
   real, dimension(:,:), allocatable, target :: var_4, var_5, tmp_2d
   integer :: t, dt, secs_in_day, y, i
-  integer :: three_hourly_ctr, daily_ctr
 
   ! Set up some timing things
   secs_in_day = 24 * 3600
@@ -34,8 +34,6 @@ program demonstrate_aggregator
       call random_number(var_5)
 
       t = t + dt
-      three_hourly_ctr = three_hourly_ctr + 1
-      daily_ctr = daily_ctr + 1
 
       ! Don't need to select type here, as accumulate is defined on the parent type
       do i = 1, size(timestep_aggs)
@@ -55,10 +53,12 @@ program demonstrate_aggregator
       do i = 1, size(timestep_aggs)
         select type (agg => timestep_aggs(i))
         type is (aggregator_1d)
-          tmp_1d = agg%get(1)
+          call agg%normalise()
+          tmp_1d = agg%storage
           call agg%reset()
         type is (aggregator_2d)
-          tmp_2d = agg%get(1)
+          call agg%normalise()
+          tmp_2d = agg%storage
           call agg%reset()
         end select
       end do
@@ -68,25 +68,29 @@ program demonstrate_aggregator
         do i = 1, size(three_hourly_aggs)
           select type (agg => three_hourly_aggs(i))
           type is (aggregator_1d)
-            tmp_1d = agg%get(three_hourly_ctr)
+            call agg%normalise()
+            tmp_1d = agg%storage
             call agg%reset()
           type is (aggregator_2d)
-            tmp_2d = agg%get(three_hourly_ctr)
+            call agg%normalise()
+            tmp_2d = agg%storage
             call agg%reset()
           end select
         end do
-        three_hourly_ctr = 0
       endif
 
       ! Trigger every day
       if (mod(t, 3600 * 24) == 0) then
+        write(output_unit,'(A)') "Triggering on end of day"
         do i = 1, size(daily_aggs)
           select type (agg => daily_aggs(i))
           type is (aggregator_1d)
-            tmp_1d = agg%get(daily_ctr)
+            call agg%normalise()
+            tmp_1d = agg%storage
             call agg%reset()
           type is (aggregator_2d)
-            tmp_2d = agg%get(daily_ctr)
+            call agg%normalise()
+            tmp_2d = agg%storage
             call agg%reset()
           end select
         end do
